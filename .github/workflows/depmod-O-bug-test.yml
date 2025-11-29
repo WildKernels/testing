@@ -1,30 +1,40 @@
-name: depmod O bug test
+name: Confirm depmod "O" bug in Kleaf
 
-# Only runs when you manually click "Run workflow" in GitHub Actions
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
-  test:
-    runs-on: ubuntu-22.04   # change to ubuntu-24.04 if you want, both have the bug
+  confirm:
+    runs-on: ubuntu-22.04  # Official GitHub runner—THIS is where the bug lives
+
     steps:
-      - name: Show kmod version
+      - name: Verify we're on the official runner (no Azure mods)
+        run: |
+          echo "Runner OS: $(cat /etc/os-release | grep PRETTY_NAME)"
+          echo "Apt sources include azure? $(grep -c azure /etc/apt/sources.list* || echo 0)"
+          # Should show Ubuntu 22.04 and 0 for azure
+
+      - name: Show kmod version (expect 29, the buggy one)
         run: kmod --version || depmod --version
 
-      - name: Trigger the malformed command (should show the infamous O)
+      - name: Reproduce the EXACT Kleaf-broken command
         run: |
-          echo "=== Expected: unrecognized option: O ==="
+          echo "=== This is the malformed depmod from your Kleaf error log ==="
+          echo "=== (no space after -F → -FSystem.map) ==="
           depmod -FSystem.map || true
+          # If you see 'unrecognized option: O' → BINGO, confirmed
 
-      - name: (Optional) Upgrade kmod and prove the O disappears
+      - name: Upgrade kmod (fix the bug without touching Kleaf)
         run: |
-          echo "=== Upgrading kmod to a fixed version ==="
+          echo "=== Installing fixed kmod 32+ ==="
           sudo apt update
           sudo apt install -y wget
           wget http://archive.ubuntu.com/ubuntu/pool/main/k/kmod/libkmod2_32-1ubuntu1_amd64.deb
           wget http://archive.ubuntu.com/ubuntu/pool/main/k/kmod/kmod_32-1ubuntu1_amd64.deb
           sudo dpkg -i libkmod2_32-1ubuntu1_amd64.deb kmod_32-1ubuntu1_amd64.deb || true
 
+          echo "=== New kmod version ==="
           kmod --version
-          echo "=== Now the same command should say 'No such file' instead of O ==="
+
+          echo "=== Same broken command → O should now be gone ==="
           depmod -FSystem.map || true
