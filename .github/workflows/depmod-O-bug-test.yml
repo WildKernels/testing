@@ -5,7 +5,7 @@ on:
 
 jobs:
   confirm:
-    runs-on: ubuntu-22.04  # Official GitHub runner—THIS is where the bug lives
+    runs-on: ubuntu-latest  # Official GitHub runner—THIS is where the bug lives
 
     steps:
       - name: Verify we're on the official runner (no Azure mods)
